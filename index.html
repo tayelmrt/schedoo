@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schedoo</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --primary:#1a3355;--primary2:#2355a0;--accent:#f59e0b;
+  --green:#10b981;--red:#ef4444;--orange:#f97316;--purple:#8b5cf6;
+  --bg:#f0f4f8;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;
+}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── NAV ── */
+nav{background:var(--primary);color:#fff;height:62px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:200;
+  box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.logo{font-size:22px;font-weight:800;letter-spacing:.5px}
+.logo span{color:var(--accent)}
+.nav-tabs{display:flex;gap:6px}
+.nav-tab{padding:8px 22px;border-radius:8px;border:none;cursor:pointer;font-size:14px;
+  font-weight:600;background:transparent;color:rgba(255,255,255,.65);transition:.2s}
+.nav-tab.active{background:var(--accent);color:var(--primary)}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.12);color:#fff}
+.nav-user{display:flex;align-items:center;gap:10px}
+.nav-user select{padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.3);
+  background:rgba(255,255,255,.1);color:#fff;font-size:13px;cursor:pointer;min-width:150px}
+.nav-user select option{color:#1e293b;background:#fff}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;
+  align-items:center;justify-content:center;font-weight:800;color:var(--primary);font-size:13px;flex-shrink:0}
+
+/* ── PAGES ── */
+.page{display:none;padding:24px;max-width:1280px;margin:0 auto}
+.page.active{display:block}
+
+/* ── CARDS ── */
+.card{background:#fff;border-radius:14px;padding:22px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:20px}
+.card-title{font-size:16px;font-weight:700;color:var(--primary);margin-bottom:18px;padding-bottom:12px;
+  border-bottom:2px solid var(--border);display:flex;align-items:center;gap:8px}
+
+/* ── BUTTONS ── */
+.btn{padding:10px 22px;border-radius:9px;border:none;font-size:14px;font-weight:700;cursor:pointer;
+  transition:.2s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary2)}
+.btn-success{background:var(--green);color:#fff}.btn-success:hover{background:#059669}
+.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{background:#dc2626}
+.btn-warning{background:var(--orange);color:#fff}.btn-warning:hover{background:#ea580c}
+.btn-ghost{background:transparent;border:2px solid var(--border);color:var(--muted)}.btn-ghost:hover{border-color:var(--primary);color:var(--primary)}
+.btn-sm{padding:7px 14px;font-size:13px;border-radius:7px}
+
+/* ── FORMS ── */
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.fg select,.fg input{padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;
+  font-size:14px;color:var(--text);background:#fff}
+.fg select:focus,.fg input:focus{outline:none;border-color:var(--primary2)}
+
+/* ── TOGGLE ── */
+.toggle-group{display:flex;background:#f1f5f9;border-radius:9px;padding:4px;gap:3px}
+.toggle-btn{padding:6px 18px;border-radius:6px;border:none;background:transparent;cursor:pointer;
+  font-size:13px;font-weight:600;color:var(--muted);transition:.2s}
+.toggle-btn.active{background:#fff;color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+
+/* ── WEEK NAV ── */
+.week-nav{display:flex;align-items:center;gap:10px}
+.week-nav button{width:30px;height:30px;border-radius:7px;border:1.5px solid var(--border);
+  background:#fff;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:.2s}
+.week-nav button:hover{border-color:var(--primary);color:var(--primary)}
+.week-nav span{font-weight:700;color:var(--primary);font-size:14px;min-width:120px;text-align:center}
+
+/* ── SCHEDULE TABLE ── */
+.sch-table{width:100%;border-collapse:collapse;font-size:14px}
+.sch-table th{background:var(--primary);color:#fff;padding:12px 14px;text-align:center;font-weight:700}
+.sch-table th:first-child{border-radius:9px 0 0 0;text-align:right;padding-right:20px}
+.sch-table th:last-child{border-radius:0 9px 0 0}
+.sch-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle;text-align:center}
+.sch-table tr:hover td{background:#f8fafc}
+.sch-table td:first-child{text-align:right;padding-right:20px}
+.day-name{font-weight:700;color:var(--primary)}
+.day-date{font-size:12px;color:var(--muted)}
+
+.shift-sel{padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;
+  width:130px;cursor:pointer;transition:.2s}
+.shift-sel:focus{outline:none}
+.s-morning{border-color:#3b82f6;color:#1d4ed8;background:#eff6ff}
+.s-afternoon{border-color:#f59e0b;color:#d97706;background:#fffbeb}
+.s-night{border-color:#8b5cf6;color:#7c3aed;background:#f5f3ff}
+.s-off{border-color:#94a3b8;color:#64748b;background:#f8fafc}
+
+.note-inp{padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;
+  width:100%;min-width:140px;color:var(--text)}
+.note-inp:focus{outline:none;border-color:var(--primary2)}
+
+/* ── SUBMISSIONS ── */
+.sub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.sub-card{background:#f8fafc;border-radius:10px;padding:14px;border:1px solid var(--border)}
+.sub-card h4{font-size:13px;font-weight:700;color:var(--primary);margin-bottom:10px;
+  padding-bottom:8px;border-bottom:1px solid var(--border)}
+.sub-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px}
+.sub-row:not(:last-child){border-bottom:1px dashed var(--border)}
+.sbadge{padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700}
+.sbadge.morning{background:#dbeafe;color:#1d4ed8}
+.sbadge.afternoon{background:#fef3c7;color:#d97706}
+.sbadge.night{background:#ede9fe;color:#7c3aed}
+.sbadge.off{background:#f1f5f9;color:#64748b}
+
+/* ── BREAKS DASHBOARD ── */
+
+/* Stats */
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:#fff;border-radius:13px;padding:16px 18px;display:flex;align-items:center;
+  gap:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;
+  justify-content:center;font-size:22px;flex-shrink:0}
+.si-green{background:#d1fae5}.si-red{background:#fee2e2}.si-orange{background:#ffedd5}.si-blue{background:#dbeafe}
+.stat-info p{font-size:12px;color:var(--muted);margin-bottom:2px}
+.stat-info h3{font-size:26px;font-weight:800;color:var(--text)}
+
+/* My action bar */
+.my-bar{background:#fff;border-radius:14px;padding:18px 22px;margin-bottom:20px;
+  box-shadow:0 1px 4px rgba(0,0,0,.07);display:flex;align-items:center;
+  justify-content:space-between;flex-wrap:wrap;gap:16px}
+.my-info{display:flex;align-items:center;gap:16px}
+.my-avatar{width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;flex-shrink:0}
+.my-name{font-weight:800;font-size:17px;margin-bottom:4px}
+.my-btns{display:flex;gap:10px;flex-wrap:wrap}
+
+/* Status badge */
+.sbdg{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;
+  font-size:12px;font-weight:700}
+.sbdg.available{background:#d1fae5;color:#059669}
+.sbdg.on-break{background:#fee2e2;color:#dc2626}
+.sbdg.scheduled{background:#ffedd5;color:#ea580c}
+.sbdg.off{background:#f1f5f9;color:#94a3b8}
+
+/* Team grid */
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
+.mem-card{background:#fff;border-radius:13px;padding:16px;
+  box-shadow:0 1px 3px rgba(0,0,0,.07);border-right:4px solid var(--border);
+  transition:all .3s;position:relative;overflow:hidden}
+.mem-card.available{border-right-color:var(--green)}
+.mem-card.on-break{border-right-color:var(--red);animation:pulse-r 2s infinite}
+.mem-card.scheduled{border-right-color:var(--orange)}
+.mem-card.off{border-right-color:#cbd5e1;opacity:.55}
+
+@keyframes pulse-r{
+  0%,100%{box-shadow:0 1px 3px rgba(0,0,0,.07)}
+  50%{box-shadow:0 4px 16px rgba(239,68,68,.2)}
+}
+
+.mem-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.mem-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-weight:800;font-size:15px;flex-shrink:0}
+.mem-avatar.available{background:#d1fae5;color:#059669}
+.mem-avatar.on-break{background:#fee2e2;color:#dc2626}
+.mem-avatar.scheduled{background:#ffedd5;color:#ea580c}
+.mem-avatar.off{background:#f1f5f9;color:#94a3b8}
+.mem-name{font-weight:700;font-size:14px;line-height:1.3}
+.mem-shift{font-size:11px;color:var(--muted);margin-top:2px}
+
+.break-timer{font-size:22px;font-weight:800;color:var(--red);text-align:center;
+  margin:8px 0 4px;font-variant-numeric:tabular-nums;letter-spacing:1px}
+.sched-time{font-size:13px;color:var(--orange);font-weight:700;text-align:center;margin-top:6px}
+
+/* Login */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 62px)}
+.login-box{background:#fff;border-radius:18px;padding:44px 40px;width:400px;max-width:92vw;
+  box-shadow:0 6px 30px rgba(0,0,0,.1);text-align:center}
+.login-box .icon{font-size:56px;margin-bottom:14px}
+.login-box h2{font-size:22px;font-weight:800;color:var(--primary);margin-bottom:6px}
+.login-box p{color:var(--muted);margin-bottom:24px;font-size:14px}
+.login-box select{width:100%;padding:14px 16px;border:2px solid var(--border);border-radius:10px;
+  font-size:15px;margin-bottom:14px;cursor:pointer;text-align:center}
+.login-box select:focus{outline:none;border-color:var(--primary2)}
+
+/* Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;
+  align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:30px;width:370px;max-width:92vw;
+  box-shadow:0 8px 30px rgba(0,0,0,.2)}
+.modal h3{font-size:18px;font-weight:800;color:var(--primary);margin-bottom:6px}
+.modal p{color:var(--muted);font-size:13px;margin-bottom:18px}
+.time-input{width:100%;padding:14px;border:2px solid var(--border);border-radius:10px;
+  font-size:22px;text-align:center;margin-bottom:18px;font-weight:700;color:var(--primary)}
+.time-input:focus{outline:none;border-color:var(--primary2)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120px);
+  background:var(--primary);color:#fff;padding:13px 26px;border-radius:12px;font-weight:700;
+  font-size:14px;transition:transform .3s;z-index:9999;box-shadow:0 6px 20px rgba(0,0,0,.2);
+  pointer-events:none;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--green)}.toast.warning{background:var(--orange)}.toast.error{background:var(--red)}
+
+/* Empty */
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty .ei{font-size:44px;margin-bottom:12px}
+.empty p{font-size:15px}
+
+/* Responsive */
+@media(max-width:900px){.stats-bar{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){
+  nav{padding:0 12px}.logo{font-size:18px}
+  .nav-tab{padding:7px 12px;font-size:12px}
+  .page{padding:12px}
+  .stats-bar{grid-template-columns:repeat(2,1fr);gap:10px}
+  .team-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .my-bar{flex-direction:column;align-items:flex-start}
+  .my-btns{width:100%}.my-btns .btn{flex:1;justify-content:center}
+  .nav-user select{min-width:110px;font-size:12px}
+}
+@media(max-width:420px){
+  .team-grid{grid-template-columns:1fr}
+  .nav-tabs{gap:3px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">Sche<span>doo</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('schedule',this)">📅 الجدول</button>
+    <button class="nav-tab"        onclick="showPage('breaks',this)">☕ البريكات</button>
+  </div>
+  <div class="nav-user">
+    <select id="navUserSel" onchange="setUser(this.value)">
+      <option value="">— اختر اسمك —</option>
+    </select>
+    <div class="avatar" id="navAvatar">?</div>
+  </div>
+</nav>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MODAL: SCHEDULE BREAK -->
+<div class="overlay" id="modal">
+  <div class="modal">
+    <h3>🕐 جدولة بريك</h3>
+    <p>اختار الوقت اللي عايز تاخد فيه البريك</p>
+    <input type="time" class="time-input" id="timeInp">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-warning" onclick="confirmSchedule()">✓ تأكيد</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE 1 — SCHEDULE
+══════════════════════════════════════════ -->
+<div class="page active" id="page-schedule">
+
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div style="font-size:16px;font-weight:800;color:var(--primary)">📅 تفضيلات الجدول الأسبوعي</div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="tbMine" onclick="switchView('mine')">جدولي</button>
+          <button class="toggle-btn"        id="tbAll"  onclick="switchView('all')">جدول الكل</button>
+        </div>
+        <div class="week-nav">
+          <button onclick="changeWeek(-1)">›</button>
+          <span id="weekLbl">—</span>
+          <button onclick="changeWeek(1)">‹</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MY VIEW -->
+    <div id="viewMine">
+      <table class="sch-table">
+        <thead>
+          <tr>
+            <th>اليوم</th>
+            <th>التاريخ</th>
+            <th>الشيفت</th>
+            <th>ملاحظة</th>
+          </tr>
+        </thead>
+        <tbody id="schBody"></tbody>
+      </table>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="btn btn-ghost" onclick="resetSch()">↺ مسح</button>
+        <button class="btn btn-primary" onclick="saveSch()">💾 حفظ تفضيلاتي</button>
+      </div>
+    </div>
+
+    <!-- ALL VIEW -->
+    <div id="viewAll" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div style="font-size:13px;color:var(--muted)" id="allSubCount">0 شخص حفظ تفضيلاته</div>
+        <button class="btn btn-success btn-sm" onclick="emailSchedule()">📧 إرسال للمسئول</button>
+      </div>
+      <div class="sub-grid" id="allGrid">
+        <div class="empty"><div class="ei">📋</div><p>لا توجد تفضيلات بعد</p></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE 2 — BREAKS
+══════════════════════════════════════════ -->
+<div class="page" id="page-breaks">
+
+  <!-- Login -->
+  <div class="login-wrap" id="loginWrap">
+    <div class="login-box">
+      <div class="icon">👋</div>
+      <h2>مين أنت؟</h2>
+      <p>اختار اسمك علشان تقدر تسجل بريكاتك</p>
+      <select id="loginSel" onchange="setUser(this.value)">
+        <option value="">— اختر اسمك —</option>
+      </select>
+      <p style="font-size:11px;color:#94a3b8">هيتذكر اسمك تلقائي في المرات الجاية</p>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dash" style="display:none">
+
+    <!-- My action bar -->
+    <div class="my-bar">
+      <div class="my-info">
+        <div class="my-avatar" id="myAv">?</div>
+        <div>
+          <div class="my-name" id="myName">—</div>
+          <div id="myStatus" class="sbdg available">🟢 متاح</div>
+          <div id="myTimer" class="break-timer" style="display:none">00:00</div>
+        </div>
+      </div>
+      <div class="my-btns" id="myBtns">
+        <button class="btn btn-danger"   id="btnNow"    onclick="breakNow()">☕ بريك الآن</button>
+        <button class="btn btn-warning"  id="btnSched"  onclick="openModal()">🕐 جدول بريك</button>
+        <button class="btn btn-success"  id="btnReturn" onclick="returnBreak()" style="display:none">✓ رجعت</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-card"><div class="stat-icon si-green">🟢</div><div class="stat-info"><p>متاحين</p><h3 id="sAvail">0</h3></div></div>
+      <div class="stat-card"><div class="stat-icon si-red">☕</div><div class="stat-info"><p>في بريك</p><h3 id="sBreak">0</h3></div></div>
+      <div class="stat-card"><div class="stat-icon si-orange">🕐</div><div class="stat-info"><p>بريك مجدول</p><h3 id="sSched">0</h3></div></div>
+      <div class="stat-card"><div class="stat-icon si-blue">👥</div><div class="stat-info"><p>الفريق كله</p><h3 id="sTotal">0</h3></div></div>
+    </div>
+
+    <!-- Team -->
+    <div class="card">
+      <div class="card-title">👥 الفريق الحالي</div>
+      <div class="team-grid" id="teamGrid"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ SCRIPT ══════════════════════════════════════════ -->
+<script>
+// ── Firebase ──────────────────────────────────────────────────────────────────
+const FB_CFG = {
+  apiKey:"AIzaSyAyQ_5RXl0lhKFza_nZN8Qbgc_vlKwo_uA",
+  authDomain:"schedoo-659a4.firebaseapp.com",
+  databaseURL:"https://schedoo-659a4-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"schedoo-659a4",
+  storageBucket:"schedoo-659a4.firebasestorage.app",
+  messagingSenderId:"833453221773",
+  appId:"1:833453221773:web:5f1528877f3dffe34ebfc4"
+};
+firebase.initializeApp(FB_CFG);
+const db = firebase.database();
+
+// ── Team ──────────────────────────────────────────────────────────────────────
+const TEAM = [
+  {id:'nagar_m',      name:'Nagar Mohamed'},
+  {id:'abdullah_sh',  name:'Abdullah Shady'},
+  {id:'adel_a',       name:'Adel Abdelrazk'},
+  {id:'ahmed_at',     name:'Ahmed Atef'},
+  {id:'mohamed_mg',   name:'Mohamed Magdy'},
+  {id:'nada_f',       name:'Nada Fadel'},
+  {id:'adham_ar',     name:'Adham Arabi'},
+  {id:'maximos_ad',   name:'Maximos Adel'},
+  {id:'mahmoud_eg',   name:'Mahmoud Elgamal'},
+  {id:'ahmed_sb',     name:'Ahmed Sabr'},
+  {id:'salma_el',     name:'Salma Elshohtawy'},
+  {id:'amro_al',      name:'Amro Aly'},
+  {id:'fatma_em',     name:'Fatma Emad'},
+  {id:'ehab_mo',      name:'Ehab Mohamed'},
+  {id:'abdelrahman_m',name:'Abdelrahman Mohamed'},
+  {id:'mahmoud_ty',   name:'Mahmoud Tayf'},
+  {id:'ayman_al',     name:'Ayman Alaa'},
+];
+
+const DAYS_AR = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const SHIFTS = {
+  morning:  {label:'صباحي 08:00', time:'08:00'},
+  afternoon:{label:'مسائي 16:00', time:'16:00'},
+  night:    {label:'ليلي 00:00',  time:'00:00'},
+  off:      {label:'إجازة',        time:'—'},
+};
+const MANAGER_EMAIL = 'manager@example.com'; // ← غيّر ده لإيميل المسئول
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let me = null;                 // current user object
+let teamData = {};             // live Firebase snapshot
+let weekStart = getMonday(new Date());
+let schView = 'mine';
+let timerIv = null;
+let schedCheckIv = null;
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+(function init(){
+  populateSelects();
+  updateWeekLabel();
+  buildSchTable();
+
+  const saved = localStorage.getItem('schedoo_uid');
+  if (saved) setUser(saved);
+
+  // Live listen breaks
+  db.ref('team_status').on('value', snap => {
+    teamData = snap.val() || {};
+    renderTeamGrid();
+    updateStats();
+    updateMyStatusUI();
+  });
+
+  // Check scheduled breaks every 30s
+  schedCheckIv = setInterval(checkScheduledBreak, 30000);
+
+  // Notification permission
+  if ('Notification' in window) Notification.requestPermission();
+})();
+
+// ── User ──────────────────────────────────────────────────────────────────────
+function populateSelects(){
+  ['navUserSel','loginSel'].forEach(id => {
+    const sel = document.getElementById(id);
+    TEAM.forEach(m => {
+      const o = document.createElement('option');
+      o.value = m.id; o.textContent = m.name;
+      sel.appendChild(o);
+    });
+  });
+}
+
+function setUser(uid){
+  if (!uid) return;
+  me = TEAM.find(m => m.id === uid);
+  if (!me) return;
+
+  localStorage.setItem('schedoo_uid', uid);
+
+  const ini = initials(me.name);
+  ['navUserSel','loginSel'].forEach(id => { const s=document.getElementById(id); if(s) s.value=uid; });
+  document.getElementById('navAvatar').textContent = ini;
+  document.getElementById('myAv').textContent = ini;
+  document.getElementById('myName').textContent = me.name;
+
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('dash').style.display = 'block';
+
+  // Init in Firebase if first time
+  db.ref(`team_status/${uid}`).once('value').then(s => {
+    if (!s.exists()) db.ref(`team_status/${uid}`).set({name:me.name,status:'available',breakStart:null,scheduledBreak:null});
+  });
+
+  updateMyStatusUI();
+  loadMySch();
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showPage(page, btn){
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  btn.classList.add('active');
+
+  if (page === 'breaks'){
+    if (!me){
+      document.getElementById('loginWrap').style.display = 'flex';
+      document.getElementById('dash').style.display = 'none';
+    } else {
+      document.getElementById('loginWrap').style.display = 'none';
+      document.getElementById('dash').style.display = 'block';
+    }
+  }
+}
+
+// ── Schedule ──────────────────────────────────────────────────────────────────
+function getMonday(d){
+  const c = new Date(d);
+  const day = c.getDay();
+  const diff = (day === 0) ? -6 : 1 - day;
+  c.setDate(c.getDate() + diff);
+  c.setHours(0,0,0,0);
+  return c;
+}
+
+function changeWeek(dir){
+  weekStart = new Date(weekStart);
+  weekStart.setDate(weekStart.getDate() + dir*7);
+  updateWeekLabel();
+  buildSchTable();
+  if (schView === 'mine') loadMySch();
+  else loadAllSch();
+}
+
+function updateWeekLabel(){
+  const end = new Date(weekStart); end.setDate(end.getDate()+6);
+  const f = d => `${d.getDate()}/${d.getMonth()+1}`;
+  document.getElementById('weekLbl').textContent = `${f(weekStart)} — ${f(end)}`;
+}
+
+function weekId(){ return weekStart.toISOString().slice(0,10); }
+
+function buildSchTable(){
+  const tbody = document.getElementById('schBody');
+  tbody.innerHTML = '';
+  for (let i=0; i<7; i++){
+    const d = new Date(weekStart); d.setDate(d.getDate()+i);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="day-name">${DAYS_AR[d.getDay()]}</div></td>
+      <td><div class="day-date">${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}</div></td>
+      <td>
+        <select class="shift-sel s-morning" id="sh_${i}" onchange="styleShift(this)">
+          <option value="morning">صباحي 08:00</option>
+          <option value="afternoon">مسائي 16:00</option>
+          <option value="night">ليلي 00:00</option>
+          <option value="off">إجازة</option>
+        </select>
+      </td>
+      <td><input class="note-inp" id="nt_${i}" placeholder="ملاحظة..."></td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function styleShift(sel){
+  sel.className = 'shift-sel';
+  const cls = {morning:'s-morning',afternoon:'s-afternoon',night:'s-night',off:'s-off'};
+  sel.classList.add(cls[sel.value] || 's-off');
+}
+
+function saveSch(){
+  if (!me){ toast('اختر اسمك الأول!','error'); return; }
+  const days = {};
+  for (let i=0; i<7; i++){
+    const d = new Date(weekStart); d.setDate(d.getDate()+i);
+    days[i] = {
+      day: DAYS_AR[d.getDay()],
+      date: `${d.getDate()}/${d.getMonth()+1}`,
+      shift: document.getElementById(`sh_${i}`).value,
+      note: document.getElementById(`nt_${i}`).value || ''
+    };
+  }
+  db.ref(`schedules/${weekId()}/${me.id}`).set({name:me.name,updatedAt:Date.now(),days})
+    .then(()=>toast('تم الحفظ ✓','success'))
+    .catch(()=>toast('حصل خطأ!','error'));
+}
+
+function loadMySch(){
+  if (!me) return;
+  db.ref(`schedules/${weekId()}/${me.id}`).once('value').then(s => {
+    if (!s.exists()) return;
+    const data = s.val();
+    for (let i=0; i<7; i++){
+      const day = data.days[i]; if (!day) continue;
+      const sh = document.getElementById(`sh_${i}`);
+      if (sh){ sh.value = day.shift; styleShift(sh); }
+      const nt = document.getElementById(`nt_${i}`);
+      if (nt) nt.value = day.note || '';
+    }
+  });
+}
+
+function resetSch(){
+  for (let i=0; i<7; i++){
+    const sh = document.getElementById(`sh_${i}`);
+    if (sh){ sh.value='morning'; styleShift(sh); }
+    const nt = document.getElementById(`nt_${i}`);
+    if (nt) nt.value='';
+  }
+}
+
+function switchView(v){
+  schView = v;
+  document.getElementById('tbMine').classList.toggle('active', v==='mine');
+  document.getElementById('tbAll').classList.toggle('active', v==='all');
+  document.getElementById('viewMine').style.display = v==='mine'?'block':'none';
+  document.getElementById('viewAll').style.display  = v==='all' ?'block':'none';
+  if (v==='all') loadAllSch();
+}
+
+function loadAllSch(){
+  const grid = document.getElementById('allGrid');
+  grid.innerHTML = '<div class="empty"><div class="ei">⏳</div><p>جاري التحميل...</p></div>';
+  db.ref(`schedules/${weekId()}`).once('value').then(s => {
+    if (!s.exists()){
+      grid.innerHTML = '<div class="empty"><div class="ei">📋</div><p>لا توجد تفضيلات لهذا الأسبوع</p></div>';
+      document.getElementById('allSubCount').textContent = '0 شخص حفظ تفضيلاته';
+      return;
+    }
+    const data = s.val();
+    const entries = Object.entries(data);
+    document.getElementById('allSubCount').textContent = `${entries.length} شخص حفظ تفضيلاته`;
+    grid.innerHTML = '';
+    entries.forEach(([, m]) => {
+      const card = document.createElement('div');
+      card.className = 'sub-card';
+      let rows = '';
+      Object.values(m.days).forEach(day => {
+        rows += `<div class="sub-row">
+          <span>${day.day}</span>
+          <span class="sbadge ${day.shift}">${SHIFTS[day.shift]?.time || '—'}</span>
+        </div>`;
+      });
+      card.innerHTML = `<h4>👤 ${m.name}</h4>${rows}`;
+      grid.appendChild(card);
+    });
+  });
+}
+
+function emailSchedule(){
+  db.ref(`schedules/${weekId()}`).once('value').then(s => {
+    if (!s.exists()){ toast('مفيش تفضيلات محفوظة','error'); return; }
+    let body = `تفضيلات الجدول — الأسبوع ${weekId()}\n${'═'.repeat(40)}\n\n`;
+    Object.values(s.val()).forEach(m => {
+      body += `${m.name}:\n`;
+      Object.values(m.days).forEach(d => {
+        body += `  ${d.day} ${d.date}: ${SHIFTS[d.shift]?.label||d.shift}`;
+        if (d.note) body += ` (${d.note})`;
+        body += '\n';
+      });
+      body += '\n';
+    });
+    const sub = encodeURIComponent(`تفضيلات الجدول — ${weekId()}`);
+    window.location.href = `mailto:${MANAGER_EMAIL}?subject=${sub}&body=${encodeURIComponent(body)}`;
+  });
+}
+
+// ── Breaks Dashboard ──────────────────────────────────────────────────────────
+function renderTeamGrid(){
+  const grid = document.getElementById('teamGrid');
+  grid.innerHTML = '';
+  TEAM.forEach(m => {
+    const d = teamData[m.id] || {status:'available'};
+    const st = d.status || 'available';
+    const ini = initials(m.name);
+    const lbl = {available:'🟢 متاح','on-break':'☕ في بريك',scheduled:`🕐 ${d.scheduledBreak||''}`}[st] || '⚫ غير متاح';
+    const cls = {available:'available','on-break':'on-break',scheduled:'scheduled'}[st] || 'off';
+
+    let extra = '';
+    if (st === 'on-break' && d.breakStart)
+      extra = `<div class="break-timer" id="t_${m.id}">${fmtTime(Math.floor((Date.now()-d.breakStart)/1000))}</div>`;
+    if (st === 'scheduled' && d.scheduledBreak)
+      extra = `<div class="sched-time">🕐 ${d.scheduledBreak}</div>`;
+
+    const card = document.createElement('div');
+    card.className = `mem-card ${cls}`;
+    card.innerHTML = `
+      <div class="mem-top">
+        <div class="mem-avatar ${cls}">${ini}</div>
+        <div>
+          <div class="mem-name">${m.name}</div>
+        </div>
+      </div>
+      <div class="sbdg ${cls}">${lbl}</div>
+      ${extra}
+    `;
+    grid.appendChild(card);
+  });
+
+  startTimers();
+}
+
+function updateStats(){
+  let av=0, br=0, sc=0;
+  TEAM.forEach(m => {
+    const st = (teamData[m.id]||{}).status || 'available';
+    if (st==='on-break') br++;
+    else if (st==='scheduled') sc++;
+    else av++;
+  });
+  document.getElementById('sAvail').textContent = av;
+  document.getElementById('sBreak').textContent = br;
+  document.getElementById('sSched').textContent = sc;
+  document.getElementById('sTotal').textContent = TEAM.length;
+}
+
+function updateMyStatusUI(){
+  if (!me) return;
+  const d = teamData[me.id] || {};
+  const st = d.status || 'available';
+  const statusEl = document.getElementById('myStatus');
+  const timerEl  = document.getElementById('myTimer');
+  const btnNow   = document.getElementById('btnNow');
+  const btnSched = document.getElementById('btnSched');
+  const btnRet   = document.getElementById('btnReturn');
+
+  statusEl.className = `sbdg ${st==='on-break'?'on-break':st==='scheduled'?'scheduled':'available'}`;
+  if (st==='on-break')  statusEl.textContent = '☕ في بريك';
+  else if (st==='scheduled') statusEl.textContent = `🕐 بريك في ${d.scheduledBreak}`;
+  else statusEl.textContent = '🟢 متاح';
+
+  if (st==='on-break'){
+    btnNow.style.display='none'; btnSched.style.display='none';
+    btnRet.style.display='inline-flex'; timerEl.style.display='block';
+  } else {
+    btnNow.style.display='inline-flex'; btnSched.style.display='inline-flex';
+    btnRet.style.display='none'; timerEl.style.display='none';
+  }
+}
+
+function startTimers(){
+  if (timerIv) clearInterval(timerIv);
+  timerIv = setInterval(()=>{
+    TEAM.forEach(m => {
+      const d = teamData[m.id];
+      if (d && d.status==='on-break' && d.breakStart){
+        const el = document.getElementById(`t_${m.id}`);
+        if (el) el.textContent = fmtTime(Math.floor((Date.now()-d.breakStart)/1000));
+      }
+    });
+    if (me){
+      const d = teamData[me.id];
+      if (d && d.status==='on-break' && d.breakStart)
+        document.getElementById('myTimer').textContent = fmtTime(Math.floor((Date.now()-d.breakStart)/1000));
+    }
+  },1000);
+}
+
+// ── Break Actions ─────────────────────────────────────────────────────────────
+function breakNow(){
+  if (!me){ toast('اختر اسمك الأول!','error'); return; }
+  db.ref(`team_status/${me.id}`).update({status:'on-break',breakStart:Date.now(),scheduledBreak:null})
+    .then(()=>toast('بريك سعيد ☕','success'));
+}
+
+function returnBreak(){
+  if (!me) return;
+  db.ref(`team_status/${me.id}`).update({status:'available',breakStart:null,scheduledBreak:null})
+    .then(()=>toast('أهلاً يلا نكمل 💪','success'));
+}
+
+function openModal(){
+  if (!me){ toast('اختر اسمك الأول!','error'); return; }
+  const now = new Date(); now.setMinutes(now.getMinutes()+30);
+  document.getElementById('timeInp').value =
+    `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+
+function confirmSchedule(){
+  const t = document.getElementById('timeInp').value;
+  if (!t){ toast('اختار وقت!','error'); return; }
+  db.ref(`team_status/${me.id}`).update({status:'scheduled',scheduledBreak:t,breakStart:null})
+    .then(()=>{ toast(`تم جدولة البريك الساعة ${t} 🕐`,'success'); closeModal(); });
+}
+
+function checkScheduledBreak(){
+  if (!me) return;
+  const d = teamData[me.id];
+  if (!d || d.status !== 'scheduled') return;
+  const now = new Date();
+  const cur = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  if (cur >= d.scheduledBreak){
+    if (Notification.permission==='granted')
+      new Notification('وقت البريك! ☕',{body:'جه وقتك، روح خد بريكك!'});
+    toast('وقت البريك! ☕','warning');
+    breakNow();
+  }
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function initials(name){
+  return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+function fmtTime(sec){
+  return `${pad(Math.floor(sec/60))}:${pad(sec%60)}`;
+}
+function pad(n){ return String(n).padStart(2,'0'); }
+function toast(msg, type=''){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  setTimeout(()=>el.classList.remove('show'), 3000);
+}
+
+// Close modal on overlay click
+document.getElementById('modal').addEventListener('click', function(e){
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>
